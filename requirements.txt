@@ -1,0 +1,8 @@
+torchaudio >= 2.5.1+cu124
+requests
+aiohttp == 3.9.1
+fastapi == 0.111.0
+uvicorn == 0.30.1
+webrtcvad-wheels == 2.0.14
+wave
+soundfile == 0.13.0

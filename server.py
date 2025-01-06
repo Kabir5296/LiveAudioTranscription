@@ -1,0 +1,147 @@
+from fastapi import FastAPI, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import numpy as np
+import webrtcvad
+import logging
+import asyncio
+from typing import Optional
+import wave
+import io
+import soundfile as sf
+
+app = FastAPI()
+
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+class AudioProcessor:
+    def __init__(self):
+        self.vad = webrtcvad.Vad(3)
+        self.sample_rate = 16000
+        self.frame_duration = 30
+        self.buffer = []
+        self.is_speech = False
+        self.silence_frames = 0
+        self.speech_frames = 0
+        self.frame_size = int(self.sample_rate * self.frame_duration / 1000)
+
+    def process_audio(self, audio_chunk: np.ndarray) -> Optional[bytes]:
+        try:
+            # Convert to 16-bit PCM
+            audio_chunk = (audio_chunk * 32767).astype(np.int16)
+            frames = self._frame_generator(audio_chunk, self.frame_size)
+            
+            for frame in frames:
+                try:
+                    is_speech = self.vad.is_speech(frame.tobytes(), self.sample_rate)
+                    self.buffer.append(frame)
+                    
+                    if is_speech:
+                        self.speech_frames += 1
+                        self.silence_frames = 0
+                        self.is_speech = True
+                    else:
+                        self.silence_frames += 1
+                    
+                    if self.is_speech and self.silence_frames > 10:
+                        if self.speech_frames > 5:
+                            complete_audio = np.concatenate(self.buffer)
+                            
+                            # Convert to WAV format
+                            wav_buffer = io.BytesIO()
+                            with wave.open(wav_buffer, 'wb') as wav_file:
+                                wav_file.setnchannels(1)
+                                wav_file.setsampwidth(2)  # 16-bit
+                                wav_file.setframerate(self.sample_rate)
+                                wav_file.writeframes(complete_audio.tobytes())
+                            
+                            self.buffer = []
+                            self.is_speech = False
+                            self.speech_frames = 0
+                            self.silence_frames = 0
+                            return wav_buffer.getvalue()
+                except Exception as e:
+                    logging.error(f"VAD processing error: {e}")
+                    continue
+            
+            return None
+        except Exception as e:
+            logging.error(f"Audio processing error: {e}")
+            return None
+
+    def _frame_generator(self, audio: np.ndarray, frame_size: int):
+        n = len(audio)
+        offset = 0
+        while offset + frame_size < n:
+            yield audio[offset:offset + frame_size]
+            offset += frame_size
+
+from agent import TranscriberAgentAPI
+agent = TranscriberAgentAPI()
+
+class TranscriptionManager:
+    def __init__(self):
+        self.audio_processor = AudioProcessor()
+        
+    async def process_audio_stream(self, websocket: WebSocket):
+        try:
+            while True:
+                try:
+                    audio_data = await websocket.receive_bytes()
+                    audio_chunk = np.frombuffer(audio_data, dtype=np.float32)
+                    
+                    wav_data = self.audio_processor.process_audio(audio_chunk)
+                    if wav_data is not None:
+                        transcription = await agent.get_transcription(wav_data)
+                        if transcription:
+                            await websocket.send_json({"text": transcription['transcription']})
+                except Exception as e:
+                    logging.error(f"Stream processing error: {e}")
+                    break
+        except Exception as e:
+            logging.error(f"Audio stream error: {e}")
+
+    async def transcribe_audio(self, wav_data: bytes) -> str:
+        try:
+            # Load the WAV data
+            with io.BytesIO(wav_data) as wav_buffer:
+                audio_array, sr = sf.read(wav_buffer)
+            
+            # Here you would call your actual transcription model
+            # For testing, return a dummy response
+            return f"Test transcription (length: {len(audio_array)} samples)"
+            
+            # When implementing the actual transcription:
+            # return agent.get_raw_transcription(audio_array, "en")
+            
+        except Exception as e:
+            logging.error(f"Transcription error: {e}")
+            logging.exception(e)  # This will print the full traceback
+            return ""
+
+transcription_manager = TranscriptionManager()
+
+@app.websocket("/ws/transcribe")
+async def websocket_endpoint(websocket: WebSocket):
+    logging.info("New WebSocket connection request")
+    await websocket.accept()
+    logging.info("WebSocket connection accepted")
+    
+    try:
+        await transcription_manager.process_audio_stream(websocket)
+    except Exception as e:
+        logging.error(f"WebSocket error: {e}")
+
+app.mount("/", StaticFiles(directory=".", html=True), name="static")
+
+if __name__ == "__main__":
+    import uvicorn
+    logging.basicConfig(level=logging.INFO)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

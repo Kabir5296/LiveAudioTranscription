@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live ASR</title>
+    <style>
+        /* Your CSS styles here */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button id="recordButton" class="button">Start Recording</button>
+        <textarea id="transcription" readonly placeholder="Transcription will appear here..."></textarea>
+    </div>
+
+    <script>
+        // Initialize variables
+        let isRecording = false;
+        let mediaRecorder;
+        let socket;
+        let audioContext;
+        let processor;
+        let audioStream;
+
+        const recordButton = document.getElementById('recordButton');
+        const transcriptionArea = document.getElementById('transcription');
+
+        async function startRecording() {
+            try {
+                // Get audio stream
+                audioStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        channelCount: 1,
+                        sampleRate: 16000
+                    }
+                });
+
+                // Set up audio context
+                audioContext = new AudioContext({
+                    sampleRate: 16000
+                });
+                const source = audioContext.createMediaStreamSource(audioStream);
+                processor = audioContext.createScriptProcessor(1024 * 16, 1, 1);
+
+                // Connect audio nodes
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+
+                // Set up WebSocket
+                socket = new WebSocket('ws://localhost:8000/ws/transcribe');
+
+                // Handle WebSocket events
+                socket.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    stopRecording();
+                    alert('Connection error. Please try again.');
+                };
+
+                socket.onclose = () => {
+                    if (isRecording) {
+                        stopRecording();
+                        alert('Connection closed. Please try again.');
+                    }
+                };
+
+                socket.onmessage = (event) => {
+                    try {
+                        const response = JSON.parse(event.data);
+                        if (response.text) {
+                            transcriptionArea.value += response.text + '\n';
+                            transcriptionArea.scrollTop = transcriptionArea.scrollHeight;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing message:', e);
+                    }
+                };
+
+                // Process audio
+                processor.onaudioprocess = (e) => {
+                    if (socket?.readyState === WebSocket.OPEN) {
+                        const audioData = e.inputBuffer.getChannelData(0);
+                        socket.send(audioData.buffer);
+                    }
+                };
+
+                // Update UI
+                recordButton.textContent = 'Stop Recording';
+                recordButton.classList.add('recording');
+                isRecording = true;
+
+            } catch (error) {
+                console.error('Error starting recording:', error);
+                alert('Error starting recording. Please check your microphone permissions.');
+                stopRecording();
+            }
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+            }
+
+            if (processor) {
+                processor.disconnect();
+                processor = null;
+            }
+
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+
+            if (socket) {
+                socket.close();
+                socket = null;
+            }
+
+            recordButton.textContent = 'Start Recording';
+            recordButton.classList.remove('recording');
+        }
+
+        recordButton.onclick = async () => {
+            recordButton.disabled = true;
+            try {
+                if (!isRecording) {
+                    await startRecording();
+                } else {
+                    stopRecording();
+                }
+            } finally {
+                recordButton.disabled = false;
+            }
+        };
+
+        window.onbeforeunload = () => {
+            if (isRecording) {
+                stopRecording();
+            }
+        };
+    </script>
+</body>
+</html>
