@@ -3,7 +3,7 @@ from transformers.utils import is_flash_attn_2_available
 import torch, os, torchaudio, io, gc
 import warnings
 from random import randint
-from utils import post_process_bn
+from .utils import post_process_bn
 warnings.filterwarnings("ignore")
 
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
