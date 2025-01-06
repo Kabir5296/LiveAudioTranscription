@@ -9,8 +9,12 @@ from typing import Optional
 import wave
 import io
 import soundfile as sf
+from api_agent import TranscriberAgentAPI
+from agent import TranscriberAgent
 
 app = FastAPI()
+agent = TranscriberAgentAPI()
+agent = TranscriberAgent()
 
 # Enable CORS
 app.add_middleware(
@@ -82,9 +86,6 @@ class AudioProcessor:
         while offset + frame_size < n:
             yield audio[offset:offset + frame_size]
             offset += frame_size
-
-from agent import TranscriberAgentAPI
-agent = TranscriberAgentAPI()
 
 class TranscriptionManager:
     def __init__(self):
