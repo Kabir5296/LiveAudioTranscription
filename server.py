@@ -25,7 +25,7 @@ class AudioProcessor:
     def __init__(self):
         self.vad = webrtcvad.Vad(3)
         self.sample_rate = 16000
-        self.frame_duration = 30
+        self.frame_duration = 10
         self.buffer = []
         self.is_speech = False
         self.silence_frames = 0
@@ -107,24 +107,6 @@ class TranscriptionManager:
                     break
         except Exception as e:
             logging.error(f"Audio stream error: {e}")
-
-    async def transcribe_audio(self, wav_data: bytes) -> str:
-        try:
-            # Load the WAV data
-            with io.BytesIO(wav_data) as wav_buffer:
-                audio_array, sr = sf.read(wav_buffer)
-            
-            # Here you would call your actual transcription model
-            # For testing, return a dummy response
-            return f"Test transcription (length: {len(audio_array)} samples)"
-            
-            # When implementing the actual transcription:
-            # return agent.get_raw_transcription(audio_array, "en")
-            
-        except Exception as e:
-            logging.error(f"Transcription error: {e}")
-            logging.exception(e)  # This will print the full traceback
-            return ""
 
 transcription_manager = TranscriptionManager()
 
