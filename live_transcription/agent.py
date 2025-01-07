@@ -64,7 +64,7 @@ class TranscriberAgent:
                 torch.cuda.empty_cache()
                 gc.collect()
                 os.unlink(file_name)
-                return transcriptions
+                return {"transcription" : transcriptions}
         except Exception as e:
             torch.cuda.empty_cache()
             gc.collect()
