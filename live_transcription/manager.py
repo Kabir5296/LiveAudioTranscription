@@ -1,14 +1,10 @@
-from fastapi import FastAPI, WebSocket
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from fastapi import WebSocket
 import numpy as np
 import webrtcvad
 import logging
-import asyncio
 from typing import Optional
 import wave
 import io
-import soundfile as sf
 from .transcriber_agent import get_transcriber_agent
 
 agent = get_transcriber_agent(method="whisper")
