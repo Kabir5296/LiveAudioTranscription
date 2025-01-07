@@ -2,7 +2,7 @@ import os, torchaudio, io, aiohttp
 from random import randint
 from fastapi import HTTPException
 from .agent_interface import TranscriberAgentInterface
-from utils import random_n
+from ..utils import random_n
 
 temp_folder = 'Temp'
 if not os.path.exists(temp_folder):

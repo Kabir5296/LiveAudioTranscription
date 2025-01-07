@@ -1,1 +1,1 @@
-from agent import get_transcriber_agent
+from .agent import get_transcriber_agent
