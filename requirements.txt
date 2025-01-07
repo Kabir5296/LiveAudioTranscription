@@ -1,4 +1,5 @@
-torchaudio >= 2.5.1+cu124
+torchaudio >= 2.5.1+cu121
+torch == 2.5.1+cu121
 requests
 aiohttp == 3.9.1
 fastapi == 0.111.0
@@ -7,3 +8,8 @@ webrtcvad-wheels == 2.0.14
 wave
 soundfile == 0.13.0
 pyannote.audio == 3.3.2
+transformers==4.36.2
+accelerate
+flash-attn --no-build-isolation
+wheel
+ninja

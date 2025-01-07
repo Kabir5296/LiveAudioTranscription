@@ -1,23 +1,20 @@
 import os, torchaudio, io, aiohttp
 from random import randint
 from fastapi import HTTPException
+from .agent_interface import TranscriberAgentInterface
+from ..utils import random_n
 
 temp_folder = 'Temp'
 if not os.path.exists(temp_folder):
     os.mkdir(temp_folder)
     
-def random_n(n):
-    range_start = 10**(n-1)
-    range_end = (10**n)-1
-    return randint(range_start, range_end)
-    
-class TranscriberAgentAPI:
-    def __init__(self):
-        self.api = "http://192.168.101.230:9803"
+class APIAgent(TranscriberAgentInterface):
+    def __init__(self, api = "http://192.168.101.230:9803",transcriber_endpoint_name = "transcribe", api_key = os.getenv("API_KEY")):
+        self.api = api
         self.endpoints = {
-            "transcriber": "transcribe"
+            "transcriber": transcriber_endpoint_name,
         }
-        self.TOKEN = os.getenv("API_KEY")
+        self.TOKEN = api_key
         
     async def get_transcription(self, audio, language = "en"):
         file_name = temp_folder+f'/audio_chunk_{random_n(8)}.mp3'

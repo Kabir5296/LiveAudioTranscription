@@ -1,5 +1,6 @@
 **/*.ipynb
 .env
-Temp
+Temp/*
 **/*__pycache__
 venv
+MODEL
