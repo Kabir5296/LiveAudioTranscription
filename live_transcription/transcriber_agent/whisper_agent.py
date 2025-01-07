@@ -4,26 +4,18 @@ import torch, os, torchaudio, io, gc
 import warnings
 from fastapi import HTTPException
 from random import randint
-from .utils import post_process_bn
+from ..utils import post_process_bn, random_n
+from .agent_interface import TranscriberAgentInterface
 warnings.filterwarnings("ignore")
-
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
-os.environ["NCCL_P2P_DISABLE"]="1"
-os.environ["NCCL_IB_DISABLE"] = "1"
 HF_TOKEN = os.getenv("HF_TOKEN")
 
 temp_folder = 'Temp'
 if not os.path.exists(temp_folder):
     os.mkdir(temp_folder)
     
-def random_n(n):
-    range_start = 10**(n-1)
-    range_end = (10**n)-1
-    return randint(range_start, range_end)
-    
-class TranscriberAgent:
-    def __init__(self, model_name = "aci-mis-team/asr_whisper_train_trial3", token = HF_TOKEN):
-        self.TOKEN = HF_TOKEN
+class WhisperAgent(TranscriberAgentInterface):
+    def __init__(self, model_name = "aci-mis-team/Whisper-BN-Medium-TUGSTUGI", token = HF_TOKEN):
+        self.TOKEN = token
         self.device = "cuda"
         self.torch_dtype = torch.float16
         self.chunk_length_s=30

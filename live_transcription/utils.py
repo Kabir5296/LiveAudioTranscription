@@ -20,3 +20,8 @@ def post_process_bn(text: str) -> str:
     text = text.replace('আসসালামু আলাইকুম','')
     # text = bnpunct.add_punctuation(text)
     return text
+
+def random_n(n):
+    range_start = 10**(n-1)
+    range_end = (10**n)-1
+    return randint(range_start, range_end)

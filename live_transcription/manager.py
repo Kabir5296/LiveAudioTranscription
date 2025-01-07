@@ -9,10 +9,9 @@ from typing import Optional
 import wave
 import io
 import soundfile as sf
-from .api_agent import TranscriberAgentAPI
-from .agent import TranscriberAgent
+from .transcriber_agent import get_transcriber_agent
 
-agent = TranscriberAgent()
+agent = get_transcriber_agent(method="whisper")
 
 class AudioProcessor:
     def __init__(self):
