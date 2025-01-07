@@ -8,7 +8,7 @@ webrtcvad-wheels == 2.0.14
 wave
 soundfile == 0.13.0
 pyannote.audio == 3.3.2
-transformers
+transformers==4.36.2
 accelerate
 flash-attn --no-build-isolation
 wheel

@@ -18,7 +18,7 @@ class AudioProcessor:
     def __init__(self):
         self.vad = webrtcvad.Vad(3)
         self.sample_rate = 16000
-        self.frame_duration = 10
+        self.frame_duration = 30
         self.buffer = []
         self.is_speech = False
         self.silence_frames = 0
@@ -86,7 +86,6 @@ class TranscriptionManager:
                 try:
                     audio_data = await websocket.receive_bytes()
                     audio_chunk = np.frombuffer(audio_data, dtype=np.float32)
-                    
                     wav_data = self.audio_processor.process_audio(audio_chunk)
                     if wav_data is not None:
                         transcription = await agent.get_transcription(wav_data)

@@ -2,6 +2,7 @@ from transformers import pipeline
 from transformers.utils import is_flash_attn_2_available
 import torch, os, torchaudio, io, gc
 import warnings
+from fastapi import HTTPException
 from random import randint
 from .utils import post_process_bn
 warnings.filterwarnings("ignore")
@@ -38,7 +39,6 @@ class TranscriberAgent:
 
     async def get_transcription(self, audio, language = "bn"):
         file_name = temp_folder+f'/audio_chunk_{random_n(8)}.mp3'
-
         byte_stream = io.BytesIO(audio)
         byte_stream.seek(0)
         
@@ -49,17 +49,24 @@ class TranscriberAgent:
         
         torchaudio.save(file_name, waveform, sample_rate)
         
-        if language == 'bn':
-            transcriptions = self.transcription_pipeline(file_name,
-                                                    batch_size=self.batch_size,
-                                                    chunk_length_s=self.chunk_length_s,
-                                                    return_timestamps=False,
-                                                    )
-            if type(transcriptions) == dict:
-                transcriptions = post_process_bn(transcriptions['text'])
-            elif type(transcriptions) == list:
-                for transcription in transcriptions:
-                    transcription['text'] = post_process_bn(transcription['text'])
+        try:
+            if language == 'bn':
+                transcriptions = self.transcription_pipeline(file_name,
+                                                        batch_size=self.batch_size,
+                                                        chunk_length_s=self.chunk_length_s,
+                                                        return_timestamps=False,
+                                                        )
+                if type(transcriptions) == dict:
+                    transcriptions = post_process_bn(transcriptions['text'])
+                elif type(transcriptions) == list:
+                    for transcription in transcriptions:
+                        transcription['text'] = post_process_bn(transcription['text'])
+                torch.cuda.empty_cache()
+                gc.collect()
+                os.unlink(file_name)
+                return transcriptions
+        except Exception as e:
             torch.cuda.empty_cache()
             gc.collect()
-            return transcriptions
+            os.unlink(file_name)
+            raise HTTPException(400, f"Transcriber Failed: {e}")
